@@ -6,23 +6,22 @@ import logging
 import numpy as np
 import pandas as pd
 import torch
-
+from tqdm import tqdm
 logger = logging.getLogger('mouse_facial_expressions')
 
 class BMv1(Dataset):
     def __init__(self, path):
         super().__init__()
         self.path = Path(path)
-        self.images = list(self.path.glob('images/*.jpg'))
+        images = sorted(self.path.glob('images/*.jpg'))
+        self.images = [resize(imread(self.path / p), (224, 224)) for p in tqdm(images)]
         self.labels = pd.read_csv(self.path / 'labels.csv')
         
     def __len__(self):
         return self.labels.shape[0]
     
     def __getitem__(self, idx):
-        image = imread(self.path / self.images[idx])
-        image = resize(image, (224, 224)) # Lookup size of pretrained network training images
-        image = image.transpose(2, 0, 1).astype(np.float32)
+        image = self.images[idx].transpose(2, 0, 1).astype(np.float32)
         labels = self.labels.iloc[idx].to_dict()
         
         return {

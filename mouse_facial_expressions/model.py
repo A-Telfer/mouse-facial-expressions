@@ -1,4 +1,3 @@
-from pickletools import optimize
 import torchvision
 import torch
 import pandas as pd

@@ -1,5 +1,3 @@
-from pickletools import optimize
-from sympy import Predicate
 import torch
 import torchvision
 import pandas as pd
