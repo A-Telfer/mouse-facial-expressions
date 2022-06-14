@@ -14,6 +14,10 @@ from torchvision.utils import make_grid
 
 assert torch.cuda.is_available()
 
+EPOCHS = 50
+BATCH_SIZE = 256
+DEVICE = 'cuda'
+
 ###################
 #     LOGGING     #
 ###################
@@ -39,8 +43,8 @@ logger.addHandler(ch)
 from mouse_facial_expressions.dataset import BMv1
 dataset = BMv1("/home/andre/shared/curated/BMv1/")
 train_sampler, val_sampler = dataset.train_test_split()
-train_loader = DataLoader(dataset, batch_size=32, sampler=train_sampler)
-val_loader = DataLoader(dataset, batch_size=32, sampler=val_sampler)
+train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, sampler=train_sampler)
+val_loader = DataLoader(dataset, batch_size=BATCH_SIZE, sampler=val_sampler)
 
 ###################
 #      Model      #
@@ -51,11 +55,6 @@ model = PretrainedResnet()
 ###################
 #    TRAIN LOOP   #
 ###################
-EPOCHS = 50
-BATCH_SIZE = 256
-DEVICE = 'cuda'
-
-
 # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0)
 optimizer = model.configure_optimizer()
 
