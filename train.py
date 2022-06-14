@@ -60,7 +60,7 @@ DEVICE = 'cuda'
 optimizer = model.configure_optimizer()
 
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-criterion = torch.nn.CrossEntropyLoss()
+criterion = torch.nn.BCEWithLogitsLoss()
 model = model.to(DEVICE)
 for epoch in range(EPOCHS):
     print("Epoch:", epoch)
@@ -73,13 +73,14 @@ for epoch in range(EPOCHS):
     for batch_index, batch in enumerate(loop):
         image = batch['image'].to(DEVICE)
         label = batch['pain'].to(DEVICE)
+        label = torch.nn.functional.one_hot(label, 2)
         
         # Loss/backprop
         pred = model(image)
         loss = criterion(pred, label)
         loss.backward()
         
-        accuracy = np.mean((torch.argmax(pred[0]) == label).cpu().numpy())
+        accuracy = np.mean((torch.argmax(pred[0]) == torch.argmax(label)).cpu().numpy())
         accuracy = round(accuracy, 2)
         loop.desc = f"Loss: {round(loss.item(),2)}, Acc: {accuracy}"
         lr = optimizer.param_groups[0]['lr']
