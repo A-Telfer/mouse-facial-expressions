@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 import logging
 import numpy as np
 import pandas as pd
+import torch
 
 logger = logging.getLogger('mouse_facial_expressions')
 
@@ -20,7 +21,7 @@ class BMv1(Dataset):
     
     def __getitem__(self, idx):
         image = imread(self.path / self.images[idx])
-        image = resize(image, (256, 256))
+        image = resize(image, (224, 224)) # Lookup size of pretrained network training images
         image = image.transpose(2, 0, 1).astype(np.float32)
         labels = self.labels.iloc[idx].to_dict()
         
@@ -41,6 +42,6 @@ class BMv1(Dataset):
         val_sampler = SubsetRandomSampler(val_indices)
         
         logger.info(f"Train Ratio: {train_ratio}")
-        logger.info(f"Train Indices: {train_indices}")
-        logger.info(f"Validation Indices: {val_indices}")
+        # logger.info(f"Train Indices: {train_indices}")
+        # logger.info(f"Validation Indices: {val_indices}")
         return train_sampler, val_sampler
