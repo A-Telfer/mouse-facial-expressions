@@ -57,7 +57,8 @@ DEVICE = 'cuda'
 
 
 # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=[0.9, 0.999], eps=1e-7, weight_decay=0)
+optimizer = model.configure_optimizer()
+
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 criterion = torch.nn.CrossEntropyLoss()
 model = model.to(DEVICE)
