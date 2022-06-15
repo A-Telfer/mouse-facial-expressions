@@ -16,8 +16,7 @@ assert torch.cuda.is_available()
 EPOCHS = 50
 BATCH_SIZE = 100
 DEVICE = 'cuda'
-DATAPATH = "/home/andretelfer/Downloads/BMv1/"
-# DATAPATH = "/home/andretelfer/shared/curated/BMv1/"
+DATAPATH = "./BMv1/"
 
 ###################
 #     LOGGING     #
@@ -25,7 +24,7 @@ DATAPATH = "/home/andretelfer/Downloads/BMv1/"
 logger = logging.getLogger('mouse_facial_expressions')
 logger.setLevel(logging.INFO)
 
-fh = logging.FileHandler('model3.log')
+fh = logging.FileHandler('model.log')
 fh.setLevel(logging.INFO)
 
 ch = logging.StreamHandler()
