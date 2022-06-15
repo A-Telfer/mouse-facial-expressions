@@ -10,12 +10,18 @@ RUN curl https://depositonce.tu-berlin.de/bitstream/11303/10451/2/BMv1.zip -o BM
 RUN apt-get install -y unzip
 RUN unzip BMv1.zip 
 
-# Copy the code over
-COPY . .
-
 # Install dependencies
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Create a pickled version of the dataset
-RUN python mouse_facial_expressions/dataset.py BMv1/
+# Resize the dataset
+COPY resize_images.py .
+RUN python resize_images.py BMv1/
 
+# Copy the code over
+COPY benchmark benchmark
+
+# Set the env variable for where the dataset is
+ENV BMv1_DATASET /workspace/BMv1
+
+CMD python benchmark/train.py
