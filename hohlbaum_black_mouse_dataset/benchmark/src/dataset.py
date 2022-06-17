@@ -47,7 +47,8 @@ class BMv1(Dataset):
     def train_test_split(self, train_ratio=0.9):
         """Train test split based on id"""
         ids = self.labels.id.unique()
-        train_ids = set(np.random.choice(ids, int(len(ids) * train_ratio), replace=False))
+        train_size = int(len(ids) * train_ratio)
+        train_ids = set(np.random.choice(ids, train_size, replace=False))
         train_indices = self.labels[self.labels.id.isin(train_ids)].index.tolist()
         train_sampler = SubsetRandomSampler(train_indices)
 

@@ -12,19 +12,19 @@ Dataset
 ### Downloading the image
 Pull the docker image
 ```
-docker pull andretelfer/hohlbaum-black-mouse-dataset-pytorch:1.1
+docker pull andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest
 ```
 
 ### Run Benchmark
 Run the benchmark
 ```
-docker run --gpus all --shm-size 4GB -it --rm andretelfer/hohlbaum-black-mouse-dataset-pytorch:1.1
+docker run --gpus all --shm-size 4GB -it --rm andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest
 ```
 - In order to run this step, you need an Nvidia GPU (tested on 6GB of VRAM)
 
 ### Using as an environment
 ```
-docker run --gpus all --shm-size 4GB -it --rm --network host andretelfer/hohlbaum-black-mouse-dataset-pytorch:1.1 bash 
+docker run --gpus all --shm-size 4GB -it --rm --network host andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash 
 ```
 
 Once in the bash, you can launch jupyter lab and access it from your host machine

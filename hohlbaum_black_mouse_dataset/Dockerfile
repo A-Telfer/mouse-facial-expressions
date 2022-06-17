@@ -11,17 +11,16 @@ RUN apt-get install -y unzip
 RUN unzip BMv1.zip 
 
 # Install dependencies
-COPY requirements.txt .
+COPY ./requirements.txt .
 RUN pip install -r requirements.txt
 
 # Resize the dataset
-COPY resize_images.py .
+COPY ./resize_images.py .
 RUN python resize_images.py BMv1/
 
 # Copy the code over
-COPY benchmark benchmark
+COPY ./benchmark benchmark
 
 # Set the env variable for where the dataset is
 ENV BMv1_DATASET /workspace/BMv1
-
 CMD python benchmark/train.py
