@@ -24,9 +24,9 @@ docker run --gpus all --shm-size 4GB -it --rm andretelfer/hohlbaum-black-mouse-d
 - This should create a log folder in your current directory with the results in it
 
 ### Run scripts
-Benchmark script (will take a while: 5 shuffles of 50 epochs)
+Benchmark script (will take a while: 5 shuffles of 50 epochs). 
 ```
-docker run --gpus all --shm-size 4GB -it --rm --network host -v `pwd`/runs:/workspace/runs andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash -c scripts/benchmark.sh
+bash scripts/benchmark.sh
 ```
 
 
