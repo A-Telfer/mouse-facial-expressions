@@ -15,13 +15,20 @@ Pull the docker image
 docker pull andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest
 ```
 
-### Run Benchmark
-Run the benchmark
+### Test
+To test if it's working, simple run
 ```
 docker run --gpus all --shm-size 4GB -it --rm andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest
 ```
 - In order to run this step, you need an Nvidia GPU (tested on 6GB of VRAM)
 - This should create a log folder in your current directory with the results in it
+
+### Run scripts
+Benchmark script (will take a while: 5 shuffles of 50 epochs)
+```
+docker run --gpus all --shm-size 4GB -it --rm --network host -v `pwd`/runs:/workspace/runs andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash -c scripts/benchmark.sh
+```
+
 
 ### Using as an environment
 ```
