@@ -45,10 +45,14 @@ parser.add_argument('--epochs', default=50, type=int, help='Number of epochs to 
 parser.add_argument('--num-workers', default=4, type=int, help='Number of workers for loading dataset')
 parser.add_argument('--train-ratio', default=0.9, type=float, help='Ratio of dataset used to create the train split')
 parser.add_argument('--data-path', default=os.environ.get("BMv1_DATASET"), help='Path to BMv1 dataset')
+parser.add_argument('--augmentation', default="none", help='Augmentation strategy (none, basic, trivial-wide)')
 
+# Validate arguments
 args = parser.parse_args()
+
 data_path = Path(args.data_path)
 assert data_path.exists()
+assert args.augmentation in ["none", "baseline", "trivial-wide", "randaug"]
 
 # Create a run subdirectory of the logdir
 save_dir = RUN_DIR / args.save_dir
@@ -58,10 +62,14 @@ while (save_dir / f'run{run}').exists():
     
 run_dir = save_dir / f'run{run}'
 
+###################
+#   Per Shuffle   #
+###################
 for shuffle in range(args.shuffles):
     shuffle_dir = run_dir / f'shuffle{shuffle}'
     if not shuffle_dir.exists():
         shuffle_dir.mkdir(parents=True)
+        
     ###################
     #     LOGGING     #
     ###################
@@ -89,11 +97,24 @@ for shuffle in range(args.shuffles):
     #     DATASET     #
     ###################
     logger.info("Loading dataset")
-    from src.dataset import BMv1
+    from src.dataset import BMv1, BaselineAugmentation
+    from torchvision.transforms import RandAugment, TrivialAugmentWide
     from torch.utils.data import DataLoader, SubsetRandomSampler
-    dataset = BMv1(data_path)
     
-    """Train test split based on id"""
+    # Get the augmentation strategy
+    if args.augmentation == 'none':
+        augmentation = None
+    elif args.augmentation == 'baseline':
+        augmentation = BaselineAugmentation()
+    elif args.augmentation == 'randaug':
+        augmentation = RandAugment()
+    elif args.augmentation == 'trivial-wide':
+        augmentation = TrivialAugmentWide()
+    
+    # Load the dataset
+    dataset = BMv1(data_path, training_transform=augmentation)
+    
+    # Train/test split based on animal id
     ids = dataset.labels.id.unique()
     train_size = int(len(ids) * args.train_ratio)
     train_ids = set(np.random.choice(ids, train_size, replace=False))
@@ -104,6 +125,7 @@ for shuffle in range(args.shuffles):
     val_indices = dataset.labels[dataset.labels.id.isin(val_ids)].index.tolist()
     val_sampler = SubsetRandomSampler(val_indices)
     
+    # Create batch loaders
     train_loader = DataLoader(
         dataset, 
         batch_size=args.batch_size, 
@@ -154,6 +176,7 @@ for shuffle in range(args.shuffles):
         print("Epoch:", epoch)
         
         # Perform a pass over the training dataset
+        dataset.train = True
         model.train()
         optimizer.zero_grad()
         
@@ -192,6 +215,7 @@ for shuffle in range(args.shuffles):
         
         # Validation loop
         model.eval()
+        dataset.train = False # Don't augment validation/test data
         val_loop = tqdm(val_loader, leave=False, desc="Validation")
         epoch_val_history = []
         for batch_index, batch in enumerate(val_loop):
@@ -219,6 +243,3 @@ for shuffle in range(args.shuffles):
     
     if args.save_model: 
         torch.save(model.state_dict(), shuffle_dir / 'final_weights.pt')
-        
-    # if args.plot_summaries:
-    #     plt.plot(val_history.epoch, val_history.loss).append
