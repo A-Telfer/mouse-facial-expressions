@@ -34,7 +34,7 @@ Dataset: Hohlbaum, K., Andresen, N., Wöllhaf, M., Lewejohann, L., Hellwich, O.,
 #      ARGS       #
 ###################
 DEVICE = 'cuda'
-RUN_DIR = Path('runs')
+RUN_DIR = Path('shared/runs')
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--save-model', action='store_true', help='Save the model at the end of training')
