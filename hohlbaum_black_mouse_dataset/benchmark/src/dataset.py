@@ -56,12 +56,14 @@ class BMv1(Dataset):
         if not self.load_into_memory:
             image = imread(self.images[idx])
             
+        # Torch expects channels first
+        image = image.transpose(2, 0, 1)
+        
         # Apply training transform 
         if self.train and self.training_transform:
             image = torch.from_numpy(image)
             image = self.training_transform(image)
             
-        image = image.transpose(2, 0, 1).astype(np.float32)
         labels = self.labels.iloc[idx].to_dict()
         return {
             'image': image,

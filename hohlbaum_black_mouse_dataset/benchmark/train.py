@@ -184,7 +184,7 @@ for shuffle in range(args.shuffles):
         epoch_train_history = []
         for batch_index, batch in enumerate(train_loop):
             optimizer.zero_grad()
-            image = batch['image'].to(DEVICE)
+            image = batch['image'].float().to(DEVICE)
             label = batch['pain'].to(DEVICE)
             
             # Loss/backprop
@@ -219,7 +219,7 @@ for shuffle in range(args.shuffles):
         val_loop = tqdm(val_loader, leave=False, desc="Validation")
         epoch_val_history = []
         for batch_index, batch in enumerate(val_loop):
-            image = batch['image'].to(DEVICE)
+            image = batch['image'].float().to(DEVICE)
             label = batch['pain'].to(DEVICE)
             pred = model(image)
             epoch_val_history.append(get_stats(pred, label))
