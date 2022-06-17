@@ -1,8 +1,10 @@
-docker run \
-    -it \
-    --rm \
-    --gpus all \
-    --shm-size 4GB \
-    --network host \
-    --volume `pwd`/runs:/workspace/runs \
-    andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash -c scripts/benchmark-augmentation-docker.sh
+#!/bin/bash
+
+export EPOCHS=50
+export SHUFFLES=5
+export TRAIN_RATIO=0.95
+
+python benchmark/train.py --save-dir benchmark-augmentation/none --augmentation none
+python benchmark/train.py --save-dir benchmark-augmentation/baseline --augmentation baseline
+python benchmark/train.py --save-dir benchmark-augmentation/randaug --augmentation randaug
+python benchmark/train.py --save-dir benchmark-augmentation/trivial-wide --augmentation trivial-wide
