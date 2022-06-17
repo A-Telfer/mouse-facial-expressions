@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.2
+VERSION=1.3
 
 usage() { echo "Usage: $0 [-p (push)]" 1>&2; exit 1; }
 
@@ -23,9 +23,8 @@ docker build . \
     --tag "andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest"
 
 if [ ${push} == 1 ]; then
-    docker push \
-        "andretelfer/hohlbaum-black-mouse-dataset-pytorch:$VERSION" \
-        "andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest"
+    docker push "andretelfer/hohlbaum-black-mouse-dataset-pytorch:$VERSION"
+    docker push "andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest"
 fi
 
 

@@ -21,10 +21,16 @@ Run the benchmark
 docker run --gpus all --shm-size 4GB -it --rm andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest
 ```
 - In order to run this step, you need an Nvidia GPU (tested on 6GB of VRAM)
+- This should create a log folder in your current directory with the results in it
 
 ### Using as an environment
 ```
-docker run --gpus all --shm-size 4GB -it --rm --network host andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash 
+docker run --gpus all --shm-size 4GB -it --rm --network host -v `pwd`/runs:/workspace/runs andretelfer/hohlbaum-black-mouse-dataset-pytorch:latest bash 
 ```
 
-Once in the bash, you can launch jupyter lab and access it from your host machine
+Once in the bash, you can launch jupyter lab and access it from your host machine (the `--network host` option was for this)
+
+Or you could try running the benchmark with custom flags (e.g. more shuffles)
+```
+python benchmark/train.py --shuffles 3 --epochs 10
+```

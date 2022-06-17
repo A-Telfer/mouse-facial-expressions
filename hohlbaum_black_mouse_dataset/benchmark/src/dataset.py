@@ -1,7 +1,7 @@
 from pathlib import Path
 from skimage.transform import resize
 from skimage.io import imread
-from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
+from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
@@ -44,16 +44,4 @@ class BMv1(Dataset):
             **labels
         }
         
-    def train_test_split(self, train_ratio=0.9):
-        """Train test split based on id"""
-        ids = self.labels.id.unique()
-        train_size = int(len(ids) * train_ratio)
-        train_ids = set(np.random.choice(ids, train_size, replace=False))
-        train_indices = self.labels[self.labels.id.isin(train_ids)].index.tolist()
-        train_sampler = SubsetRandomSampler(train_indices)
-
-        val_ids = set(ids) - train_ids
-        val_indices = self.labels[self.labels.id.isin(val_ids)].index.tolist()
-        val_sampler = SubsetRandomSampler(val_indices)
-        return train_sampler, val_sampler
     

@@ -5,6 +5,7 @@ import logging
 import os
 import argparse
 import json
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from pathlib import Path
@@ -33,40 +34,41 @@ Dataset: Hohlbaum, K., Andresen, N., Wöllhaf, M., Lewejohann, L., Hellwich, O.,
 #      ARGS       #
 ###################
 DEVICE = 'cuda'
+RUN_DIR = Path('runs')
 
 parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--logdir', default="logs", help='path for logfile')
-parser.add_argument('--data-path', default=os.environ.get("BMv1_DATASET"), help='Path to BMv1 dataset')
+parser.add_argument('--save-model', action='store_true', help='Save the model at the end of training')
+parser.add_argument('--save-dir', default="", help='subfolder of "runs" to save results')
 parser.add_argument('--batch-size', default=100, type=int, help='Training/validation batch size')
+parser.add_argument('--shuffles', default=1, type=int, help='Number of training shuffles to perform')
 parser.add_argument('--epochs', default=50, type=int, help='Number of epochs to train for')
 parser.add_argument('--num-workers', default=4, type=int, help='Number of workers for loading dataset')
 parser.add_argument('--train-ratio', default=0.9, type=float, help='Ratio of dataset used to create the train split')
-parser.add_argument('--shuffles', default=1, type=int, help='Number of training shuffles to perform')
+parser.add_argument('--data-path', default=os.environ.get("BMv1_DATASET"), help='Path to BMv1 dataset')
 
-# parser.add_argument('--rotation-augmentation', action='store_true', help='Use a rotation augmentation')
 args = parser.parse_args()
-
 data_path = Path(args.data_path)
 assert data_path.exists()
 
 # Create a run subdirectory of the logdir
-logdir = Path(args.logdir)
+save_dir = RUN_DIR / args.save_dir
 run = 0
-while (logdir / f'run{run}').exists():
+while (save_dir / f'run{run}').exists():
     run += 1
     
-logdir = logdir / f'run{run}'
-if not logdir.exists():
-    logdir.mkdir(parents=True)
+run_dir = save_dir / f'run{run}'
 
 for shuffle in range(args.shuffles):
+    shuffle_dir = run_dir / f'shuffle{shuffle}'
+    if not shuffle_dir.exists():
+        shuffle_dir.mkdir(parents=True)
     ###################
     #     LOGGING     #
     ###################
     logger = logging.getLogger('BMv1 Benchmark')
     logger.setLevel(logging.INFO)
 
-    fh = logging.FileHandler(logdir / f"train-shuffle{shuffle}.log")
+    fh = logging.FileHandler(shuffle_dir / f"train.log")
     fh.setLevel(logging.INFO)
 
     ch = logging.StreamHandler()
@@ -88,8 +90,20 @@ for shuffle in range(args.shuffles):
     ###################
     logger.info("Loading dataset")
     from src.dataset import BMv1
+    from torch.utils.data import DataLoader, SubsetRandomSampler
     dataset = BMv1(data_path)
-    train_sampler, val_sampler = dataset.train_test_split(args.train_ratio)
+    
+    """Train test split based on id"""
+    ids = dataset.labels.id.unique()
+    train_size = int(len(ids) * args.train_ratio)
+    train_ids = set(np.random.choice(ids, train_size, replace=False))
+    train_indices = dataset.labels[dataset.labels.id.isin(train_ids)].index.tolist()
+    train_sampler = SubsetRandomSampler(train_indices)
+
+    val_ids = set(ids) - train_ids
+    val_indices = dataset.labels[dataset.labels.id.isin(val_ids)].index.tolist()
+    val_sampler = SubsetRandomSampler(val_indices)
+    
     train_loader = DataLoader(
         dataset, 
         batch_size=args.batch_size, 
@@ -134,6 +148,8 @@ for shuffle in range(args.shuffles):
         FN = np.sum((pred!=label)[label==1])
         return {'accuracy': accuracy, 'TP': TP, 'FP': FP, 'TN': TN, 'FN': FN}
         
+    train_history = []
+    val_history = []
     for epoch in range(args.epochs):
         print("Epoch:", epoch)
         
@@ -142,7 +158,7 @@ for shuffle in range(args.shuffles):
         optimizer.zero_grad()
         
         train_loop = tqdm(train_loader, leave=False)
-        train_history = []
+        epoch_train_history = []
         for batch_index, batch in enumerate(train_loop):
             optimizer.zero_grad()
             image = batch['image'].to(DEVICE)
@@ -160,30 +176,49 @@ for shuffle in range(args.shuffles):
             train_loop.desc = batch_summary
             logger.info(f"Epoch: {epoch}, Batch: {batch_index}, LR: {lr}, " + batch_summary)
             
-            train_history.append(history_item)
+            epoch_train_history.append(history_item)
             optimizer.step()
         
         # Summarize train epoch
-        train_history = pd.DataFrame(train_history)
-        train_history_agg = train_history.agg({'accuracy': 'mean', 'loss': 'mean', 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
+        epoch_train_history = pd.DataFrame(epoch_train_history)
+        epoch_train_history_agg = epoch_train_history.agg({'accuracy': 'mean', 'loss': 'mean', 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
+        epoch_train_history_agg['epoch'] = epoch
+        epoch_train_history_agg['shuffle'] = shuffle
+        train_history.append(epoch_train_history_agg)
         summary = "Train averages -> Loss: {loss:02.02f}, Acc: {accuracy:01.02}, TP {TP:02.0f}, FP {FP:02.0f}, TN {TN:02.0f}, FN {FN:02.0f}"
-        summary = summary.format(**train_history_agg.to_dict())
+        summary = summary.format(**epoch_train_history_agg.to_dict())
         logger.info(summary)
         print(summary)
         
         # Validation loop
         model.eval()
         val_loop = tqdm(val_loader, leave=False, desc="Validation")
-        val_history = []
+        epoch_val_history = []
         for batch_index, batch in enumerate(val_loop):
             image = batch['image'].to(DEVICE)
             label = batch['pain'].to(DEVICE)
             pred = model(image)
-            val_history.append(get_stats(pred, label))
+            epoch_val_history.append(get_stats(pred, label))
         
-        val_history = pd.DataFrame(val_history)
-        val_history_agg = val_history.agg({'accuracy': 'mean', 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
+        epoch_val_history = pd.DataFrame(epoch_val_history)
+        epoch_val_history_agg = epoch_val_history.agg({'accuracy': 'mean', 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
+        epoch_val_history_agg['epoch'] = epoch
+        epoch_val_history_agg['shuffle'] = shuffle
+        val_history.append(epoch_val_history_agg)
         summary = "Validation averages -> Acc: {accuracy:01.02}, TP {TP:02.0f}, FP {FP:02.0f}, TN {TN:02.0f}, FN {FN:02.0f}"
-        summary = summary.format(**val_history_agg.to_dict())
+        summary = summary.format(**epoch_val_history_agg.to_dict())
         logger.info(summary)
         print(summary)
+        
+    # Create plots / save model
+    train_history = pd.DataFrame(train_history)
+    val_history = pd.DataFrame(val_history)
+    
+    train_history.to_csv(shuffle_dir / "train.csv", index=False)
+    val_history.to_csv(shuffle_dir / "val.csv", index=False)
+    
+    if args.save_model: 
+        torch.save(model.state_dict(), shuffle_dir / 'final_weights.pt')
+        
+    # if args.plot_summaries:
+    #     plt.plot(val_history.epoch, val_history.loss).append

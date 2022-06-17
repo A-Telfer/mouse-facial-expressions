@@ -20,6 +20,7 @@ RUN python resize_images.py BMv1/
 
 # Copy the code over
 COPY ./benchmark benchmark
+COPY ./scripts scripts
 
 # Set the env variable for where the dataset is
 ENV BMv1_DATASET /workspace/BMv1
