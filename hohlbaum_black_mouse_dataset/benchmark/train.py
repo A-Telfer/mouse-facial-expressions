@@ -46,6 +46,8 @@ parser.add_argument('--num-workers', default=os.environ.get("WORKERS", 4), type=
 parser.add_argument('--train-ratio', default=os.environ.get("TRAIN_RATIO", 0.9), type=float, help='Ratio of dataset used to create the train split')
 parser.add_argument('--data-path', default=os.environ.get("DATA_PATH"), help='Path to BMv1 dataset')
 parser.add_argument('--augmentation', default=os.environ.get("AUGMENTATION", 'none'), help='Augmentation strategy (none, basic, trivial-wide)')
+parser.add_argument('--optimizer', default=os.environ.get("OPTIMIZER", 'adam'), help='adam/sgd')
+parser.add_argument('--learning-rate', default=os.environ.get("LEARNING_RATE", 0.001), type=float, help='adam/sgd')
 
 # Validate arguments
 args = parser.parse_args()
@@ -53,6 +55,7 @@ args = parser.parse_args()
 data_path = Path(args.data_path)
 assert data_path.exists()
 assert args.augmentation in ["none", "baseline", "trivial-wide", "randaug"]
+assert args.optimizer in ["sgd", 'adam']
 
 # Create a run subdirectory of the logdir
 save_dir = RUN_DIR / args.save_dir
@@ -155,7 +158,14 @@ for shuffle in range(args.shuffles):
     logger.info("Beginning training loop")
     ch.setLevel(logging.ERROR) # inteferes with tqdm
     
-    optimizer = model.configure_optimizer()
+    scheduler = None
+    lr = args.learning_rate
+    if args.optimizer == 'adam':
+        optimizer = torch.optim.Adam(model.base_model.fc.parameters(), lr=lr, betas=[0.9, 0.999], eps=1e-7, weight_decay=0)
+    elif args.optimizer == 'sgd':
+        optimizer = torch.optim.SGD(model.base_model.fc.parameters(), lr=lr, momentum=0.9) 
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0)
+        
     criterion = torch.nn.CrossEntropyLoss()
     model = model.to(DEVICE)
 
@@ -194,25 +204,30 @@ for shuffle in range(args.shuffles):
             
             # Stats
             lr = optimizer.param_groups[0]['lr']
-            history_item = {**get_stats(pred, label), 'loss': loss.item()}
-            batch_summary = "Loss: {loss:02.02f}, Acc: {accuracy:01.02f}, TP {TP:02}, FP {FP:02}, TN {TN:02}, FN {FN:02}".format(**history_item)
+            history_item = {**get_stats(pred, label), 'loss': loss.item(), 'lr': lr}
+            batch_summary = "LR: {lr:.01e}, Loss: {loss:02.02f}, Acc: {accuracy:01.02f}, TP {TP:02}, FP {FP:02}, TN {TN:02}, FN {FN:02}".format(**history_item)
             train_loop.desc = batch_summary
             logger.info(f"Epoch: {epoch}, Batch: {batch_index}, LR: {lr}, " + batch_summary)
             
             epoch_train_history.append(history_item)
             optimizer.step()
         
+        # Update the scheduler every epoch
+        if scheduler is not None:
+            scheduler.step()
+        
         # Summarize train epoch
         epoch_train_history = pd.DataFrame(epoch_train_history)
-        epoch_train_history_agg = epoch_train_history.agg({'accuracy': 'mean', 'loss': 'mean', 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
+        epoch_train_history_agg = epoch_train_history.agg({
+            'accuracy': 'mean', 'loss': 'mean', 'lr': lambda x: x.iloc[0], 'TP': 'sum', 'FP': 'sum', 'TN': 'sum', 'FN': 'sum'})
         epoch_train_history_agg['epoch'] = epoch
         epoch_train_history_agg['shuffle'] = shuffle
         train_history.append(epoch_train_history_agg)
-        summary = "Train averages -> Loss: {loss:02.02f}, Acc: {accuracy:01.02}, TP {TP:02.0f}, FP {FP:02.0f}, TN {TN:02.0f}, FN {FN:02.0f}"
+        summary = "Train averages -> LR: {lr:.01e}, Loss: {loss:02.02f}, Acc: {accuracy:01.02}, TP {TP:02.0f}, FP {FP:02.0f}, TN {TN:02.0f}, FN {FN:02.0f}"
         summary = summary.format(**epoch_train_history_agg.to_dict())
         logger.info(summary)
         print(summary)
-        
+            
         # Validation loop
         model.eval()
         dataset.train = False # Don't augment validation/test data

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.3
+VERSION=1.4
 
 usage() { echo "Usage: $0 [-p (push)]" 1>&2; exit 1; }
 

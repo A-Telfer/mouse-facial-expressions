@@ -21,6 +21,3 @@ class PretrainedResnet(torch.nn.Module):
     def __call__(self, x):
         return self.base_model(x)
     
-    def configure_optimizer(self):
-        optimizer = torch.optim.Adam(self.base_model.fc.parameters(), lr=0.001, betas=[0.9, 0.999], eps=1e-7, weight_decay=0)
-        return optimizer
