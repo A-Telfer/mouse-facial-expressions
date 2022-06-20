@@ -47,6 +47,7 @@ parser.add_argument('--train-ratio', default=os.environ.get("TRAIN_RATIO", 0.9),
 parser.add_argument('--data-path', default=os.environ.get("DATA_PATH"), help='Path to BMv1 dataset')
 parser.add_argument('--augmentation', default=os.environ.get("AUGMENTATION", 'none'), help='Augmentation strategy (none, basic, trivial-wide)')
 parser.add_argument('--optimizer', default=os.environ.get("OPTIMIZER", 'adam'), help='adam/sgd')
+parser.add_argument('--scheduler', default=os.environ.get("SCHEDULER", 'none'), help='none/')
 parser.add_argument('--learning-rate', default=os.environ.get("LEARNING_RATE", 0.001), type=float, help='adam/sgd')
 
 # Validate arguments
@@ -56,6 +57,7 @@ data_path = Path(args.data_path)
 assert data_path.exists()
 assert args.augmentation in ["none", "baseline", "trivial-wide", "randaug"]
 assert args.optimizer in ["sgd", 'adam']
+assert args.scheduler in ["none", "sgdr"]
 
 # Create a run subdirectory of the logdir
 save_dir = RUN_DIR / args.save_dir
@@ -158,12 +160,13 @@ for shuffle in range(args.shuffles):
     logger.info("Beginning training loop")
     ch.setLevel(logging.ERROR) # inteferes with tqdm
     
-    scheduler = None
     lr = args.learning_rate
     if args.optimizer == 'adam':
         optimizer = torch.optim.Adam(model.base_model.fc.parameters(), lr=lr, betas=[0.9, 0.999], eps=1e-7, weight_decay=0)
     elif args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.base_model.fc.parameters(), lr=lr, momentum=0.9) 
+        
+    if args.scheduler == 'sgdr':
         scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0)
         
     criterion = torch.nn.CrossEntropyLoss()
